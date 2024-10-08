@@ -1,0 +1,19 @@
+name: CI pipeline
+
+on: 
+  pull_request: 
+    branches: [main]
+
+jobs:
+  execute:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v4.2.1
+
+      - name: Setup Python
+        uses: actions/setup-python@v5.2.0
+
+      - name: Run python app
+        run: python app.py
