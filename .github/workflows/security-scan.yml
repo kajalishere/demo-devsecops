@@ -45,6 +45,13 @@ jobs:
         echo "=== Running Safety Dependency Vulnerability Check ==="
         safety check --json > safety-report.json
         safety check
+
+    - name: Generate PDF Report
+      if: always()
+      continue-on-error: true
+      run: |
+        echo "=== Generating PDF Security Report ==="
+        python generate_report.py
         
     - name: Upload Safety Report
       if: always()
@@ -52,6 +59,13 @@ jobs:
       with:
         name: safety-report
         path: safety-report.json
+
+    - name: Upload PDF Report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-pdf-report
+        path: security_report.pdf
         
     - name: Run Unit Tests
       continue-on-error: true
