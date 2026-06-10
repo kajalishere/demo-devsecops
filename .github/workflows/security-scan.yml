@@ -18,30 +18,93 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: '3.9'
+    
+    - name: Debug - Show Python info
+      run: |
+        echo "Python version:"
+        python --version
+        echo "Python executable:"
+        which python
+        echo "Pip version:"
+        pip --version
         
     - name: Install dependencies
       run: |
+        echo "Installing dependencies..."
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        echo "Installing from requirements.txt..."
+        pip install -r requirements.txt -v
+        echo "Checking installed packages..."
+        pip list | grep -E "reportlab|safety|bandit|pytest"
         
     - name: Run Safety Dependency Check
+      id: safety_scan
       continue-on-error: true
       run: |
-        echo "=== Running Safety Dependency Scan ==="
-        safety check --json > safety-report.json 2>&1 || true
-        safety check || true
+        echo "===== SAFETY SCAN START ====="
+        echo "Checking Safety installation..."
+        which safety
+        safety --version
+        echo ""
+        echo "Running Safety check..."
+        safety check --json > safety-report.json 2>&1
+        SAFETY_EXIT=$?
+        echo "Safety exit code: $SAFETY_EXIT"
+        echo ""
+        echo "Checking if report was created..."
+        if [ -f safety-report.json ]; then
+          echo "✅ safety-report.json created"
+          ls -lh safety-report.json
+          echo "First 100 chars:"
+          head -c 100 safety-report.json
+        else
+          echo "❌ safety-report.json NOT created"
+        fi
+        echo "===== SAFETY SCAN END ====="
+        exit 0
         
     - name: Generate PDF Report
+      id: pdf_gen
       continue-on-error: true
       run: |
-        echo "=== Generating PDF Report ==="
-        python generate_report.py || true
+        echo "===== PDF GENERATION START ====="
+        echo "Current directory:"
+        pwd
+        echo ""
+        echo "Files in current directory:"
+        ls -lah
+        echo ""
+        echo "Checking for safety-report.json:"
+        if [ -f safety-report.json ]; then
+          echo "✅ File exists"
+          echo "File size:"
+          wc -c safety-report.json
+          echo "First 200 lines of JSON:"
+          head -200 safety-report.json || true
+        else
+          echo "⚠️  safety-report.json not found"
+        fi
+        echo ""
+        echo "Running PDF generator..."
+        python generate_report.py
+        PDF_EXIT=$?
+        echo "PDF generator exit code: $PDF_EXIT"
+        echo ""
+        echo "Checking if PDF was created..."
+        if [ -f security_report.pdf ]; then
+          echo "✅ security_report.pdf created"
+          ls -lh security_report.pdf
+        else
+          echo "⚠️  security_report.pdf NOT created (this is OK if JSON wasn't available)"
+        fi
+        echo "===== PDF GENERATION END ====="
+        exit 0
         
     - name: Upload Safety Report
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: safety-report
+        name: safety-report-json
         path: safety-report.json
         if-no-files-found: ignore
         
@@ -56,15 +119,20 @@ jobs:
     - name: Run Tests
       continue-on-error: true
       run: |
-        echo "=== Running Unit Tests ==="
+        echo "===== TESTS START ====="
         pytest tests/ -v --tb=short 2>&1 || true
+        echo "===== TESTS END ====="
         
-    - name: Security Scan Complete
+    - name: Final Summary
       if: always()
       run: |
         echo ""
-        echo "✅ Security Scanning Complete"
-        echo "Reports available in artifacts:"
-        echo "  - safety-report.json"
-        echo "  - security_report.pdf"
+        echo "=========================================="
+        echo "SECURITY SCAN WORKFLOW COMPLETED"
+        echo "=========================================="
+        echo "Check artifacts for:"
+        echo "  ✓ safety-report.json"
+        echo "  ✓ security_report.pdf"
         echo ""
+        echo "If PDF is missing, check logs above."
+        echo "=========================================="
