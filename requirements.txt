@@ -7,3 +7,5 @@ itsdangerous==2.1.2
 pytest==7.4.0
 bandit==1.7.5
 safety==2.3.5
+reportlab==4.0.9
+pypdf==4.1.1
